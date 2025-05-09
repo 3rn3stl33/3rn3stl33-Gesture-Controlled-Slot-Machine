@@ -86,7 +86,7 @@
       await webcam.play();
       window.requestAnimationFrame(loop);
 
-      document.getElementById("webcam").appendChild(webcam.canvas);
+      document.getElementById("webcam").replaceWith(webcam.canvas);
       labelContainer = document.getElementById("label-container");
       for (let i = 0; i < maxPredictions; i++) {
         labelContainer.appendChild(document.createElement("div"));
