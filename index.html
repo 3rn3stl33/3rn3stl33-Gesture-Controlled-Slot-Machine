@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gesture-Controlled Slot Machine</title>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8.4/dist/teachablemachine-pose.min.js"></script>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+    }
+
+    .reels {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin: 20px;
+      font-size: 48px;
+      font-weight: bold;
+    }
+
+    .reel {
+      width: 80px;
+      height: 80px;
+      border: 3px solid #555;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #f0f0f0;
+    }
+
+    #spinButton {
+      padding: 15px 30px;
+      font-size: 20px;
+      border: none;
+      background-color: #3498db;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    #spinButton:disabled {
+      background-color: #aaa;
+    }
+
+    video {
+      margin-top: 20px;
+    }
+
+    #label-container {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gesture-Controlled Slot Machine</h1>
+
+  <div class="reels">
+    <div class="reel" id="reel1">🍒</div>
+    <div class="reel" id="reel2">🍋</div>
+    <div class="reel" id="reel3">🍇</div>
+  </div>
+
+  <button id="spinButton" onclick="spin()">SPIN</button>
+
+  <div id="label-container"></div>
+  <video id="webcam" autoplay playsinline width="400" height="300"></video>
+
+  <script>
+    const URL = "https://teachablemachine.withgoogle.com/models/72oWK2mJ3/";
+    let model, webcam, maxPredictions, labelContainer;
+    let isSpinning = false;
+
+    const symbols = ["🍒", "🍋", "🍇", "🔔", "⭐", "7️⃣"];
+
+    async function init() {
+      const modelURL = URL + "model.json";
+      const metadataURL = URL + "metadata.json";
+
+      model = await tmPose.load(modelURL, metadataURL);
+      maxPredictions = model.getTotalClasses();
+
+      webcam = new tmPose.Webcam(400, 300, true);
+      await webcam.setup();
+      await webcam.play();
+      window.requestAnimationFrame(loop);
+
+      document.getElementById("webcam").appendChild(webcam.canvas);
+      labelContainer = document.getElementById("label-container");
+      for (let i = 0; i < maxPredictions; i++) {
+        labelContainer.appendChild(document.createElement("div"));
+      }
+    }
+
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
+
+    async function predict() {
+      const { pose, posenetOutput } = await model.estimatePose(webcam.canvas);
+      const prediction = await model.predict(posenetOutput);
+
+      for (let i = 0; i < maxPredictions; i++) {
+        const className = prediction[i].className;
+        const probability = prediction[i].probability.toFixed(2);
+        labelContainer.childNodes[i].innerHTML = `${className}: ${probability}`;
+
+        if (className === "Punch" && prediction[i].probability > 0.9 && !isSpinning) {
+          spin();
+        }
+      }
+    }
+
+    function spin() {
+      isSpinning = true;
+      document.getElementById("spinButton").disabled = true;
+      document.getElementById("spinButton").innerText = "Spinning...";
+
+      let spinCount = 10;
+      let interval = setInterval(() => {
+        document.getElementById("reel1").innerText = symbols[Math.floor(Math.random() * symbols.length)];
+        document.getElementById("reel2").innerText = symbols[Math.floor(Math.random() * symbols.length)];
+        document.getElementById("reel3").innerText = symbols[Math.floor(Math.random() * symbols.length)];
+        spinCount--;
+        if (spinCount <= 0) {
+          clearInterval(interval);
+          isSpinning = false;
+          document.getElementById("spinButton").disabled = false;
+          document.getElementById("spinButton").innerText = "SPIN";
+        }
+      }, 100);
+    }
+
+    init();
+  </script>
+</body>
+</html>
